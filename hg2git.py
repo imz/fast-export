@@ -10,7 +10,7 @@ import sys
 import subprocess
 
 # default git branch name
-cfg_master='master'
+cfg_master='hg'
 # default origin name
 origin_name=''
 # silly regex to see if user field has email address
@@ -75,7 +75,7 @@ def get_changeset(ui,repo,revision,authors={},encoding=''):
     user=user.decode(encoding).encode('utf8')
     desc=desc.decode(encoding).encode('utf8')
   tz="%+03d%02d" % (-timezone / 3600, ((-timezone % 3600) / 60))
-  branch=get_branch(extra.get('branch','master'))
+  branch=get_branch(extra.get('branch',cfg_master))
   return (node,manifest,fixup_user(user,authors),(time,tz),files,desc,branch,extra)
 
 def mangle_key(key):
