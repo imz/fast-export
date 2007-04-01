@@ -9,7 +9,7 @@ import os
 import sys
 
 # git branch for hg's default 'HEAD' branch
-cfg_master='master'
+cfg_master='hg'
 # silly regex to see if user field has email address
 user_re=re.compile('([^<]+) (<[^>]+>)$')
 # silly regex to clean out user names
@@ -54,7 +54,7 @@ def get_changeset(ui,repo,revision,authors={}):
   node=repo.lookup(revision)
   (manifest,user,(time,timezone),files,desc,extra)=repo.changelog.read(node)
   tz="%+03d%02d" % (-timezone / 3600, ((-timezone % 3600) / 60))
-  branch=get_branch(extra.get('branch','master'))
+  branch=get_branch(extra.get('branch',cfg_master))
   return (node,manifest,fixup_user(user,authors),(time,tz),files,desc,branch,extra)
 
 def mangle_key(key):
