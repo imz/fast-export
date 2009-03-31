@@ -7,6 +7,7 @@ License: GPL
 Group: Development/Other
 
 URL: http://repo.or.cz/w/hg2git.git
+Packager: Vladimir V. Kamarzin <vvk@altlinux.org>
 Source: %name-%version-%release.tar
 
 %description
@@ -19,13 +20,12 @@ frontend for git-fast-import(1).
 %setup -q -n %name-%version-%release
 
 %install
-install -pD -m755 hg2git.sh %buildroot%_bindir/hg2git
-install -pD -m644 hg2git.py %buildroot%_bindir/hg2git.py
+install -pD -m755 hg-fast-export.sh %buildroot%_bindir/hg-fast-export
+install -pD -m644 hg-fast-export.py %buildroot%_bindir/hg-fast-export.py
 
 %files
-%doc hg2git.txt
-%_bindir/hg2git
-%_bindir/hg2git.py
+%doc hg-fast-export.txt
+%_bindir/*
 
 %changelog
 * Mon Apr 02 2007 Alexey Tourbin <at@altlinux.ru> 0.1-alt1
