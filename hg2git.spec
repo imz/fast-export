@@ -20,6 +20,7 @@ frontend for git-fast-import(1).
 %setup -q -n %name-%version-%release
 
 %install
+install -pD -m755 hg2git.py %buildroot%_bindir/hg2git.py
 install -pD -m755 hg-fast-export.sh %buildroot%_bindir/hg-fast-export
 install -pD -m644 hg-fast-export.py %buildroot%_bindir/hg-fast-export.py
 
