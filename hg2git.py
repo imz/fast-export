@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2007 Rocco Rutte <pdmef@gmx.net>
+# Copyright (c) 2007, 2008 Rocco Rutte <pdmef@gmx.net> and others.
 # License: MIT <http://www.opensource.org/licenses/mit-license.php>
 
 from mercurial import repo,hg,cmdutil,util,ui,revlog,node
@@ -10,13 +10,27 @@ import sys
 
 # git branch for hg's default 'HEAD' branch
 cfg_master='hg'
+# default origin name
+origin_name=''
 # silly regex to see if user field has email address
 user_re=re.compile('([^<]+) (<[^>]+>)$')
 # silly regex to clean out user names
 user_clean_re=re.compile('^["]([^"]+)["]$')
 
+def set_default_branch(name):
+  global cfg_master
+  cfg_master = name
+
+def set_origin_name(name):
+  global origin_name
+  origin_name = name
+
 def setup_repo(url):
-  myui=ui.ui(interactive=False)
+  try:
+    myui=ui.ui(interactive=False)
+  except TypeError:
+    myui=ui.ui()
+    myui.setconfig('ui', 'interactive', 'off')
   return myui,hg.repository(myui,url)
 
 def fixup_user(user,authors):
@@ -45,9 +59,12 @@ def fixup_user(user,authors):
   return '%s %s' % (name,mail)
 
 def get_branch(name):
-  # HEAD may be from CVS imports into hg
+  # 'HEAD' is the result of a bug in mutt's cvs->hg conversion,
+  # other CVS imports may need it, too
   if name=='HEAD' or name=='default' or name=='':
     name=cfg_master
+  if origin_name:
+    return origin_name + '/' + name
   return name
 
 def get_changeset(ui,repo,revision,authors={}):
