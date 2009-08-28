@@ -1,6 +1,6 @@
 Name: hg2git
 Version: 0.1
-Release: alt2
+Release: alt3
 
 Summary: Mercurial to git converter using git-fast-import
 License: GPL
@@ -29,6 +29,9 @@ install -pD -m644 hg-fast-export.py %buildroot%_bindir/hg-fast-export.py
 %_bindir/*
 
 %changelog
+* Fri Aug 28 2009 Vladimir V. Kamarzin <vvk@altlinux.org> 0.1-alt3
+- New version from raorn (merged with upstream) (Closes: #21276)
+
 * Tue Mar 31 2009 Vladimir V. Kamarzin <vvk@altlinux.org> 0.1-alt2
 - Update to working version taken from raorn's git (Closes: #19415, #17668)
 
