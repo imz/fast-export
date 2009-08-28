@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2007 Rocco Rutte <pdmef@gmx.net>
+# Copyright (c) 2007, 2008 Rocco Rutte <pdmef@gmx.net> and others.
 # License: MIT <http://www.opensource.org/licenses/mit-license.php>
 
 from mercurial import repo,hg,cmdutil,util,ui,revlog,node
-from hg2git import setup_repo,fixup_user,get_branch,get_changeset,load_cache,save_cache,get_git_sha1
+from hg2git import setup_repo,fixup_user,get_branch,get_changeset
+from hg2git import load_cache,save_cache,get_git_sha1,set_default_branch,set_origin_name
 from tempfile import mkstemp
 from optparse import OptionParser
 import re
@@ -116,6 +117,10 @@ def export_file_contents(ctx,manifest,files):
   count=0
   max=len(files)
   for file in files:
+    # Skip .hgtags files. They only get us in trouble.
+    if file == ".hgtags":
+      sys.stderr.write('Skip %s\n' % (file))
+      continue
     d=ctx.filectx(file).data()
     wr('M %s inline %s' % (gitmode(manifest.flags(file)),file))
     wr('data %d' % len(d)) # had some trouble with size()
@@ -141,7 +146,7 @@ def sanitize_name(name,what="branch"):
     return name
 
   n=name
-  p=re.compile('([[ ^:?*]|\.\.)')
+  p=re.compile('([[ ~^:?*]|\.\.)')
   n=p.sub('_', n)
   if n[-1] == '/': n=n[:-1]+'_'
   n='/'.join(map(dot,n.split('/')))
@@ -152,7 +157,7 @@ def sanitize_name(name,what="branch"):
     sys.stderr.write('Warning: sanitized %s [%s] to [%s]\n' % (what,name,n))
   return n
 
-def export_commit(ui,repo,revision,marks,heads,last,max,count,authors,sob,brmap):
+def export_commit(ui,repo,revision,marks,mapping,heads,last,max,count,authors,sob,brmap):
   def get_branchname(name):
     if brmap.has_key(name):
       return brmap[name]
@@ -175,8 +180,13 @@ def export_commit(ui,repo,revision,marks,heads,last,max,count,authors,sob,brmap)
   wr()
 
   pidx1, pidx2 = 0, 1
-  if parents[0] < parents[1]:
-    pidx1, pidx2 = 1, 0
+  if parents[1] > 0:
+    if parents[0] <= 0 or \
+        repo.changelog.node(parents[0]) < repo.changelog.node(parents[1]):
+      pidx1, pidx2 = 1, 0
+
+  full_rev=False
+  if revision==0: full_rev=True
 
   src=heads.get(branch,'')
   link=''
@@ -189,12 +199,16 @@ def export_commit(ui,repo,revision,marks,heads,last,max,count,authors,sob,brmap)
         (branch,src))
     link=src # avoid making a merge commit for incremental import
   elif link=='' and not heads.has_key(branch) and revision>0:
-    # newly created branch and not the first one: connect to parent
-    tmp=get_parent_mark(parents[0],marks)
-    wr('from %s' % tmp)
-    sys.stderr.write('%s: Link new branch to parent [%s]\n' %
-        (branch,tmp))
-    link=tmp # avoid making a merge commit for branch fork
+    if parents[0]>=0:
+      # newly created branch with parent: connect to parent
+      tmp=get_parent_mark(parents[0],marks)
+      wr('from %s' % tmp)
+      sys.stderr.write('%s: Link new branch to parent [%s]\n' %
+          (branch,tmp))
+      link=tmp # avoid making a merge commit for branch fork
+    else:
+      # newly created branch without parent: feed full revision
+      full_rev=True
   elif last.get(branch,revision) != parents[pidx1] and parents[pidx1] > 0 and revision > 0:
     pm=get_parent_mark(parents[pidx1],marks)
     sys.stderr.write('%s: Placing commit [r%d] in branch [%s] on top of [r%d]\n' %
@@ -216,7 +230,7 @@ def export_commit(ui,repo,revision,marks,heads,last,max,count,authors,sob,brmap)
   man=ctx.manifest()
   added,changed,removed,type=[],[],[],''
 
-  if revision==0:
+  if full_rev:
     # first revision: feed in full manifest
     added=man.keys()
     added.sort()
@@ -245,17 +259,20 @@ def export_commit(ui,repo,revision,marks,heads,last,max,count,authors,sob,brmap)
 
   return checkpoint(count)
 
-def export_tags(ui,repo,marks_cache,start,end,count,authors):
+def export_tags(ui,repo,marks_cache,mapping_cache,count,authors):
   l=repo.tagslist()
   for tag,node in l:
     tag=sanitize_name(tag,"tag")
     # ignore latest revision
     if tag=='tip': continue
-    rev=repo.changelog.rev(node)
-    # ignore those tags not in our import range
-    if rev<start or rev>=end: continue
+    # ignore tags to nodes that are missing (ie, 'in the future')
+    if node.encode('hex_codec') not in mapping_cache:
+      sys.stderr.write('Tag %s refers to unseen node %s\n' % (tag, node.encode('hex_codec')))
+      continue
 
-    ref=get_parent_mark(rev,marks_cache)
+    rev=int(mapping_cache[node.encode('hex_codec')])
+
+    ref=marks_cache.get(str(rev),':%d' % (rev))
     if ref==None:
       sys.stderr.write('Failed to find reference for creating tag'
           ' %s at r%d\n' % (tag,rev))
@@ -321,10 +338,11 @@ def verify_heads(ui,repo,cache,force):
 def mangle_mark(mark):
   return str(int(mark)-1)
 
-def hg2git(repourl,m,marksfile,headsfile,tipfile,authors={},sob=False,force=False):
+def hg2git(repourl,m,marksfile,mappingfile,headsfile,tipfile,authors={},sob=False,force=False):
   _max=int(m)
 
   marks_cache=load_cache(marksfile,mangle_mark)
+  mapping_cache=load_cache(mappingfile)
   heads_cache=load_cache(headsfile)
   state_cache=load_cache(tipfile)
 
@@ -343,19 +361,25 @@ def hg2git(repourl,m,marksfile,headsfile,tipfile,authors={},sob=False,force=Fals
   if _max<0 or max>tip:
     max=tip
 
+  for rev in range(0,max):
+  	(revnode,_,_,_,_,_,_,_)=get_changeset(ui,repo,rev,authors)
+  	mapping_cache[revnode.encode('hex_codec')] = str(rev)
+
+
   c=0
   last={}
   brmap={}
   for rev in range(min,max):
-    c=export_commit(ui,repo,rev,marks_cache,heads_cache,last,max,c,authors,sob,brmap)
-
-  c=export_tags(ui,repo,marks_cache,min,max,c,authors)
-
-  sys.stderr.write('Issued %d commands\n' % c)
+    c=export_commit(ui,repo,rev,marks_cache,mapping_cache,heads_cache,last,max,c,authors,sob,brmap)
 
   state_cache['tip']=max
   state_cache['repo']=repourl
   save_cache(tipfile,state_cache)
+  save_cache(mappingfile,mapping_cache)
+
+  c=export_tags(ui,repo,marks_cache,mapping_cache,c,authors)
+
+  sys.stderr.write('Issued %d commands\n' % c)
 
   return 0
 
@@ -369,6 +393,8 @@ if __name__=='__main__':
 
   parser.add_option("-m","--max",type="int",dest="max",
       help="Maximum hg revision to import")
+  parser.add_option("--mapping",dest="mappingfile",
+      help="File to read last run's hg-to-git SHA1 mapping")
   parser.add_option("--marks",dest="marksfile",
       help="File to read git-fast-import's marks from")
   parser.add_option("--heads",dest="headsfile",
@@ -383,6 +409,10 @@ if __name__=='__main__':
       help="Read authormap from AUTHORFILE")
   parser.add_option("-f","--force",action="store_true",dest="force",
       default=False,help="Ignore validation errors by force")
+  parser.add_option("-M","--default-branch",dest="default_branch",
+      help="Set the default branch")
+  parser.add_option("-o","--origin",dest="origin_name",
+      help="use <name> as namespace to track upstream")
 
   (options,args)=parser.parse_args()
 
@@ -390,6 +420,7 @@ if __name__=='__main__':
   if options.max!=None: m=options.max
 
   if options.marksfile==None: bail(parser,'--marks')
+  if options.mappingfile==None: bail(parser,'--mapping')
   if options.headsfile==None: bail(parser,'--heads')
   if options.statusfile==None: bail(parser,'--status')
   if options.repourl==None: bail(parser,'--repo')
@@ -398,5 +429,11 @@ if __name__=='__main__':
   if options.authorfile!=None:
     a=load_authors(options.authorfile)
 
-  sys.exit(hg2git(options.repourl,m,options.marksfile,options.headsfile,
+  if options.default_branch!=None:
+    set_default_branch(options.default_branch)
+
+  if options.origin_name!=None:
+    set_origin_name(options.origin_name)
+
+  sys.exit(hg2git(options.repourl,m,options.marksfile,options.mappingfile,options.headsfile,
     options.statusfile,authors=a,sob=options.sob,force=options.force))
