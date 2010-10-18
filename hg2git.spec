@@ -6,7 +6,7 @@ Summary: Mercurial to git converter using git-fast-import
 License: GPL
 Group: Development/Other
 
-URL: http://repo.or.cz/w/hg2git.git
+URL: http://repo.or.cz/w/fast-export.git
 Packager: Vladimir V. Kamarzin <vvk@altlinux.org>
 Source: %name-%version-%release.tar
 
