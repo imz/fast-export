@@ -9,6 +9,7 @@ Group: Development/Other
 URL: http://repo.or.cz/w/fast-export.git
 Packager: Vladimir V. Kamarzin <vvk@altlinux.org>
 Source: %name-%version-%release.tar
+BuildArch: noarch
 
 %description
 This is a work-in-progress for creating a fast and small hg2git script
