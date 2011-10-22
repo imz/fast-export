@@ -1,6 +1,6 @@
 Name: hg2git
 Version: 0.1
-Release: alt4
+Release: alt4.1
 
 Summary: Mercurial to git converter using git-fast-import
 License: GPL
@@ -29,6 +29,9 @@ install -pD -m644 hg-fast-export.py %buildroot%_bindir/hg-fast-export.py
 %_bindir/*
 
 %changelog
+* Sat Oct 22 2011 Vitaly Kuznetsov <vitty@altlinux.ru> 0.1-alt4.1
+- Rebuild with Python-2.7
+
 * Mon Oct 18 2010 Vladimir V. Kamarzin <vvk@altlinux.org> 0.1-alt4
 - Update to c8a45848968a21c3021489a6ba3ab1ffe5ef2a90
 - Make package noarch
