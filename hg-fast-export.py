@@ -3,10 +3,9 @@
 # Copyright (c) 2007, 2008 Rocco Rutte <pdmef@gmx.net> and others.
 # License: MIT <http://www.opensource.org/licenses/mit-license.php>
 
-from mercurial import repo,hg,cmdutil,util,ui,revlog,node
+from mercurial import node
 from hg2git import setup_repo,fixup_user,get_branch,get_changeset
 from hg2git import load_cache,save_cache,get_git_sha1,set_default_branch,set_origin_name
-from tempfile import mkstemp
 from optparse import OptionParser
 import re
 import sys
@@ -23,9 +22,9 @@ def gitmode(flags):
   return 'l' in flags and '120000' or 'x' in flags and '100755' or '100644'
 
 def wr(msg=''):
-  if msg == None:
-    msg = ''
-  print msg
+  if msg:
+    sys.stdout.write(msg)
+  sys.stdout.write('\n')
   #map(lambda x: sys.stderr.write('\t[%s]\n' % x),msg.split('\n'))
 
 def checkpoint(count):
@@ -140,7 +139,7 @@ def sanitize_name(name,what="branch"):
   n=name
   p=re.compile('([[ ~^:?*]|\.\.)')
   n=p.sub('_', n)
-  if n[-1] == '/': n=n[:-1]+'_'
+  if n[-1] in ('/', '.'): n=n[:-1]+'_'
   n='/'.join(map(dot,n.split('/')))
   p=re.compile('_+')
   n=p.sub('_', n)
