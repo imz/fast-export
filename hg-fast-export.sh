@@ -3,6 +3,10 @@
 # Copyright (c) 2007, 2008 Rocco Rutte <pdmef@gmx.net> and others.
 # License: MIT <http://www.opensource.org/licenses/mit-license.php>
 
+if [ -n "$BASH" ]; then
+    set -o pipefail
+fi
+
 ROOT="`dirname $0`"
 REPO=""
 PFX="hg2git"
@@ -66,6 +70,11 @@ done
 if [ x"$REPO" = x -a -f "$GIT_DIR/$PFX-$SFX_STATE" ] ; then
   REPO="`egrep '^:repo ' "$GIT_DIR/$PFX-$SFX_STATE" | cut -d ' ' -f 2`"
   echo "Using last hg repository \"$REPO\""
+fi
+
+if [  -z "$REPO" ]; then
+    echo "no repo given, use -r flag"
+    exit 1
 fi
 
 # make sure we have a marks cache
