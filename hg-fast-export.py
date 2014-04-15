@@ -59,7 +59,7 @@ def split_dict(dleft,dright,l=[],c=[],r=[],match=file_mismatch):
     if right==None:
       # we have the file but our parent hasn't: add to left set
       l.append(left)
-    elif match(dleft[left],right):
+    elif match(dleft[left],right) or gitmode(dleft.flags(left))!=gitmode(dright.flags(left)):
       # we have it but checksums mismatch: add to center set
       c.append(left)
   for right in dright.keys():
@@ -119,12 +119,12 @@ def get_author(logmessage,committer,authors):
       return r
   return committer
 
-def export_file_contents(ctx,manifest,files):
+def export_file_contents(ctx,manifest,files,hgtags):
   count=0
   max=len(files)
   for file in files:
     # Skip .hgtags files. They only get us in trouble.
-    if file == ".hgtags":
+    if not hgtags and file == ".hgtags":
       sys.stderr.write('Skip %s\n' % (file))
       continue
     d=ctx.filectx(file).data()
@@ -145,7 +145,7 @@ def sanitize_name(name,what="branch"):
     return name
 
   n=name
-  p=re.compile('([[ ~^:?*]|\.\.)')
+  p=re.compile('([[ ~^:?\\\\*]|\.\.)')
   n=p.sub('_', n)
   if n[-1] in ('/', '.'): n=n[:-1]+'_'
   n='/'.join(map(dot,n.split('/')))
@@ -156,7 +156,7 @@ def sanitize_name(name,what="branch"):
     sys.stderr.write('Warning: sanitized %s [%s] to [%s]\n' % (what,name,n))
   return n
 
-def export_commit(ui,repo,revision,old_marks,max,count,authors,sob,brmap):
+def export_commit(ui,repo,revision,old_marks,max,count,authors,sob,brmap,hgtags):
   def get_branchname(name):
     if brmap.has_key(name):
       return brmap[name]
@@ -181,12 +181,6 @@ def export_commit(ui,repo,revision,old_marks,max,count,authors,sob,brmap):
   wr('data %d' % (len(desc)+1)) # wtf?
   wr(desc)
   wr()
-
-
-  # Sort the parents based on revision ids so that we always get the
-  # same resulting git repo, no matter how the revisions were
-  # numbered.
-  parents.sort(key=repo.changelog.node, reverse=True)
 
   ctx=repo.changectx(str(revision))
   man=ctx.manifest()
@@ -218,8 +212,8 @@ def export_commit(ui,repo,revision,old_marks,max,count,authors,sob,brmap):
       (branch,type,revision+1,max,len(added),len(changed),len(removed)))
 
   map(lambda r: wr('D %s' % r),removed)
-  export_file_contents(ctx,man,added)
-  export_file_contents(ctx,man,changed)
+  export_file_contents(ctx,man,added,hgtags)
+  export_file_contents(ctx,man,changed,hgtags)
   wr()
 
   return checkpoint(count)
@@ -258,21 +252,37 @@ def load_authors(filename):
     return cache
   f=open(filename,'r')
   l=0
+  a=0
   lre=re.compile('^([^=]+)[ ]*=[ ]*(.+)$')
   for line in f.readlines():
     l+=1
+    line=line.strip()
+    if line=='' or line[0]=='#':
+      continue
     m=lre.match(line)
     if m==None:
       sys.stderr.write('Invalid file format in [%s], line %d\n' % (filename,l))
       continue
     # put key:value in cache, key without ^:
     cache[m.group(1).strip()]=m.group(2).strip()
+    a+=1
   f.close()
-  sys.stderr.write('Loaded %d authors\n' % l)
+  sys.stderr.write('Loaded %d authors\n' % a)
   return cache
 
+def branchtip(repo, heads):
+  '''return the tipmost branch head in heads'''
+  tip = heads[-1]
+  for h in reversed(heads):
+    if 'close' not in repo.changelog.read(h)[5]:
+      tip = h
+      break
+  return tip
+
 def verify_heads(ui,repo,cache,force):
-  branches=repo.branchtags()
+  branches={}
+  for bn, heads in repo.branchmap().iteritems():
+    branches[bn] = branchtip(repo, heads)
   l=[(-repo.changelog.rev(n), n, t) for t, n in branches.items()]
   l.sort()
 
@@ -298,7 +308,7 @@ def verify_heads(ui,repo,cache,force):
 
   return True
 
-def hg2git(repourl,m,marksfile,mappingfile,headsfile,tipfile,authors={},sob=False,force=False):
+def hg2git(repourl,m,marksfile,mappingfile,headsfile,tipfile,authors={},sob=False,force=False,hgtags=False):
   _max=int(m)
 
   old_marks=load_cache(marksfile,lambda s: int(s)-1)
@@ -329,7 +339,7 @@ def hg2git(repourl,m,marksfile,mappingfile,headsfile,tipfile,authors={},sob=Fals
   c=0
   brmap={}
   for rev in range(min,max):
-    c=export_commit(ui,repo,rev,old_marks,max,c,authors,sob,brmap)
+    c=export_commit(ui,repo,rev,old_marks,max,c,authors,sob,brmap,hgtags)
 
   state_cache['tip']=max
   state_cache['repo']=repourl
@@ -364,6 +374,8 @@ if __name__=='__main__':
       help="URL of repo to import")
   parser.add_option("-s",action="store_true",dest="sob",
       default=False,help="Enable parsing Signed-off-by lines")
+  parser.add_option("--hgtags",action="store_true",dest="hgtags",
+      default=False,help="Enable exporting .hgtags files")
   parser.add_option("-A","--authors",dest="authorfile",
       help="Read authormap from AUTHORFILE")
   parser.add_option("-f","--force",action="store_true",dest="force",
@@ -395,4 +407,4 @@ if __name__=='__main__':
     set_origin_name(options.origin_name)
 
   sys.exit(hg2git(options.repourl,m,options.marksfile,options.mappingfile,options.headsfile,
-    options.statusfile,authors=a,sob=options.sob,force=options.force))
+    options.statusfile,authors=a,sob=options.sob,force=options.force,hgtags=options.hgtags))
