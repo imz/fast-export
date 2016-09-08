@@ -26,8 +26,12 @@ frontend for git-fast-import(1).
 
 %install
 install -pD -m755 hg2git.py %buildroot%_bindir/hg2git.py
+
 install -pD -m755 hg-fast-export.sh %buildroot%_bindir/hg-fast-export
 install -pD -m644 hg-fast-export.py %buildroot%_bindir/hg-fast-export.py
+
+install -pD -m755 hg-reset.sh %buildroot%_bindir/hg-reset
+install -pD -m644 hg-reset.py %buildroot%_bindir/hg-reset.py
 
 %files
 #doc hg-fast-export.txt
@@ -37,6 +41,7 @@ install -pD -m644 hg-fast-export.py %buildroot%_bindir/hg-fast-export.py
 %changelog
 * Thu Sep  8 2016 Ivan Zakharyaschev <imz@altlinux.org> 160415-alt1
 - Updated to upstream v160415.
+- Packaged hg-reset, too.
 
 * Thu May 29 2014 Eugeny A. Rostovtsev (REAL) <real at altlinux.org> 0.1-alt9
 - New snapshot (ALT #30005)
