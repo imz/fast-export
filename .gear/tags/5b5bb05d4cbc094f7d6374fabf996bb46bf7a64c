@@ -1,0 +1,10 @@
+object c614ae776bd023095c91b849f4da268429b79455
+type commit
+tag v160415
+tagger Frej Drejhammar <frej.drejhammar@gmail.com> 1471774696 +0200
+
+Tag version 160415
+
+As this version seems stable enough (there haven't been any trouble
+reports in a couple of months), tag a version. Apparently this helps
+Homebrew packagers.
