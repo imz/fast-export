@@ -8,7 +8,9 @@ Group: Development/Other
 
 # git://repo.or.cz/fast-export.git
 URL: http://repo.or.cz/w/fast-export.git
-Source: %name-%version-%release.tar
+Source: hg-fast-export-%version-%release.tar
+Patch1: hg-fast-export-alt-tags-annotated.patch
+Patch2: hg2git-alt-default-branch-name.patch
 BuildArch: noarch
 
 %description
@@ -18,7 +20,9 @@ using git. To simplify importing and increase performance, it acts as a
 frontend for git-fast-import(1).
 
 %prep
-%setup -n %name-%version-%release
+%setup -n hg-fast-export-%version-%release
+%patch1 -p1
+%patch2 -p1
 
 %install
 install -pD -m755 hg2git.py %buildroot%_bindir/hg2git.py
