@@ -1,6 +1,6 @@
 Name: hg-fast-export
 Version: 160415
-Release: alt1
+Release: alt2
 
 Summary: Mercurial to git converter using git-fast-import
 License: GPL
@@ -43,6 +43,10 @@ install -pD -m644 hg-reset.py %buildroot%_bindir/hg-reset.py
 %_bindir/*
 
 %changelog
+* Fri Sep 09 2016 Ivan Zakharyaschev <imz@altlinux.org> 160415-alt2
+- The ALT package renamed from hg2git to match the upstream name and
+  Debian & OpenSuse.
+
 * Thu Sep  8 2016 Ivan Zakharyaschev <imz@altlinux.org> 160415-alt1
 - Updated to upstream v160415.
 - Packaged hg-reset, too.
