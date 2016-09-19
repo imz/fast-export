@@ -32,7 +32,8 @@ Options:
 	          (Same as in git-svnimport(1) and git-cvsimport(1))
 	-B <file> Read branch map from file
 	-T <file> Read tags map from file
-	-M <name> Set the default branch name (defaults to 'master')
+	-M <name> Set the default branch name
+                  (defaults to 'hg' in ALT; vanilla: 'master')
 	-o <name> Use <name> as branch namespace to track upstream (eg 'origin')
 	--hg-hash Annotate commits with the hg hash as git notes in the
                   hg namespace.
