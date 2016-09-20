@@ -1,3 +1,3 @@
-tar: upstream:. name=@name@-@version@
-diff: v@version@:. tags-annotated:. name=hg-fast-export-@version@-alt-tags-annotated.patch
-diff: v@version@:. default-branch-name:. name=hg2git-@version@-alt-default-branch-name.patch
+tar: v@version@:. name=@name@-@version@
+diff: v160415:. tags-annotated:. name=hg-fast-export-160415-alt-tags-annotated.patch
+diff: v160415:. default-branch-name:. name=hg2git-160415-alt-default-branch-name.patch
